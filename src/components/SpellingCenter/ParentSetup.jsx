@@ -170,8 +170,12 @@ export default function ParentSetup() {
               <span className="ml-1 text-xs text-slate-400">（点击展开）</span>
             </summary>
             <div className="border-t border-slate-100/80 px-3 pb-3 pt-1 text-xs leading-relaxed text-slate-500">
-              在根目录配置 <code className="text-slate-600">.env</code> 后重启{" "}
-              <code>npm run dev</code>，或在下方填写（勿在公网环境手填）。手填有泄露风险。
+              本地开发：在根目录 <code className="text-slate-600">.env</code> 写{" "}
+              <code className="text-slate-600">VITE_OPENAI_API_KEY</code> 后重启{" "}
+              <code>npm run dev</code>。部署在 GitHub Pages
+              等**静态站**上时，宜在下方「API 密钥」**临时手填**（不写入站点的 JS
+              包，他人无法从整站文件里看到）；勿在公屏输入。在 Vercel
+              配同名的 <code className="text-slate-600">VITE_</code> 变量会打进前端、等同公开，仅适合可接受该风险时配合额度与密钥轮换使用。
             </div>
           </details>
         )}
