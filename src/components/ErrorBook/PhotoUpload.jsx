@@ -1,17 +1,16 @@
 import { useId, useState } from "react";
-import { ImagePlus, Loader2, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, ImagePlus, Loader2, Sparkles } from "lucide-react";
 import { extractErrorsFromPhoto } from "@/utils/llmErrorBook";
 import { addErrorItems } from "@/utils/errorBookStore";
 import { getOpenAiConfig } from "@/utils/openAiConfig";
 
 /**
- * @param {{ subject: string }} props 当前分科；拍卷/手录均记入该学科
+ * 家长：当前分科下拍卷 → 大模型抽取错题
+ * @param {{ subject: string }} props
  */
 export default function PhotoUpload({ subject }) {
   const fileId = useId();
-  const inStem = useId();
-  const inKp = useId();
-  const inBook = useId();
+  const keyFieldId = useId();
   const { key: envKey } = getOpenAiConfig();
   const [file, setFile] = useState(/** @type {File | null} */ (null));
   const [apiKey, setApiKey] = useState("");
@@ -19,10 +18,8 @@ export default function PhotoUpload({ subject }) {
   const [err, setErr] = useState(/** @type {string | null} */ (null));
   const [ok, setOk] = useState(/** @type {string | null} */ (null));
   const [preview, setPreview] = useState(/** @type {string | null} */ (null));
-  const [mStem, setMStem] = useState("");
-  const [mKp, setMKp] = useState("");
-  const [mBook, setMBook] = useState("深圳部编版一年级下册");
   const effectiveKey = apiKey.trim() || envKey;
+  const hasEnvKey = Boolean(envKey);
 
   const onPick = (e) => {
     const f = e.target.files?.[0] ?? null;
@@ -44,11 +41,11 @@ export default function PhotoUpload({ subject }) {
 
   const runAi = async () => {
     if (!file) {
-      setErr("请先选一张卷面图");
+      setErr("请先选一张卷面/错题截图。");
       return;
     }
     if (!effectiveKey) {
-      setErr("未配置 API 密钥：请在 .env 填写，或在下方「临时」填写。");
+      setErr("未配置 API 密钥：请在 .env 填写，或展开「API 密钥」临时填写。");
       return;
     }
     setErr(null);
@@ -57,7 +54,7 @@ export default function PhotoUpload({ subject }) {
     try {
       const list = await extractErrorsFromPhoto(file, effectiveKey);
       if (!list.length) {
-        setErr("未从图中抽出错题。可手输一条或换更清晰的单题截图。");
+        setErr("未从图中抽出错题。可换一张更清晰、更贴近单题的截图重试。");
         return;
       }
       addErrorItems(
@@ -69,165 +66,135 @@ export default function PhotoUpload({ subject }) {
           inWeakPool: true,
         }))
       );
-      setOk(`已加入 ${list.length} 道错题。`);
+      setOk(`已加入 ${list.length} 道错题，见下方「知识点与归档」`);
     } catch (e) {
-      setErr(
-        (e instanceof Error ? e.message : String(e)) +
-          " 若你只用 DeepSeek 且不支持多模态，请用下方手录。"
-      );
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
   };
 
-  const runManual = () => {
-    const t = mStem.trim();
-    if (!t) {
-      setErr("手录时请填写题面/摘要。");
-      return;
-    }
-    setErr(null);
-    addErrorItems([
-      {
-        stem: t,
-        subject,
-        knowledgePoint: mKp.trim() || "未分类",
-        bookTag: mBook.trim() || "深圳部编版一年级下册",
-        inWeakPool: true,
-      },
-    ]);
-    setOk("已手录 1 条错题。");
-    setMStem("");
-    setMKp("");
-  };
-
   return (
-    <section className="space-y-4" aria-label={`${subject}拍卷录入`}>
-      <h3 className="text-base font-bold text-slate-800">
-        一、{subject} · 试卷/作业拍卷
-      </h3>
-      <p className="rounded-lg bg-slate-100/80 px-2 py-1.5 text-xs text-slate-600">
-        本页录入的错题条目标记为「{subject}」；与别科分开统计与闯关。
-      </p>
-      <p className="text-sm text-slate-600">
-        支持单张图；大模型会尝试用 JSON
-        抽取错题。若报「多模态不支持」，可用手录。
-        {envKey
-          ? " 已检测到 .env 中的 API 配置。"
-          : " 未检测到 .env 密钥，请在下面填写。"}
-      </p>
-      <input
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-        type="password"
-        autoComplete="off"
-        placeholder="临时代用密钥（可空）"
-        value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
-      />
-      <div>
-        <label
-          className="text-sm font-medium text-slate-700"
-          htmlFor={fileId}
-        >
-          单拍 / 一图多题
-        </label>
-        <input
-          id={fileId}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onPick}
-          className="mt-1 block w-full text-sm"
-        />
-        {preview && (
-          <img
-            src={preview}
-            alt="预览"
-            className="mt-2 max-h-40 rounded-xl border object-contain"
-          />
-        )}
+    <section
+      className="overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 shadow-sm"
+      aria-label={`${subject}拍卷录入`}
+    >
+      <div className="border-b border-slate-100/90 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
+        <h3 className="text-base font-bold text-slate-800">
+          {subject} · 拍卷识题
+        </h3>
+        <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
+          单张图即可；大模型会尝试用 JSON
+          抽取题面。录入条目均标记为「{subject}」。
+        </p>
       </div>
-      <button
-        type="button"
-        disabled={loading || !file}
-        onClick={runAi}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 py-2.5 text-sm font-medium text-white shadow disabled:opacity-50"
-      >
-        {loading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Sparkles className="h-5 w-5" />
-        )}
-        AI 抽取错题
-      </button>
-      {err && (
-        <p className="text-sm text-red-600" role="alert">
-          {err}
-        </p>
-      )}
-      {ok && (
-        <p className="text-sm text-emerald-700" role="status">
-          {ok}
-        </p>
-      )}
 
-      <div className="border-t border-dashed border-slate-200 pt-4">
-        <h3 className="text-base font-bold text-slate-800">二、{subject} · 手录一题</h3>
-        <p className="text-xs text-slate-500">无图/识图失败时用；自动归入{subject}。</p>
-        <div className="mt-2 space-y-2">
-          <div>
-            <label className="text-xs text-slate-600" htmlFor={inStem}>
-              题面/摘要
-            </label>
-            <textarea
-              id={inStem}
-              className="mt-0.5 w-full rounded-xl border border-slate-200 p-2 text-sm"
-              rows={2}
-              value={mStem}
-              onChange={(e) => setMStem(e.target.value)}
-              placeholder="如：3+8=＿"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-1">
-            <div>
-              <label className="text-xs text-slate-600" htmlFor={inKp}>
-                知识点
-              </label>
-              <input
-                id={inKp}
-                className="mt-0.5 w-full rounded-lg border p-1.5 text-sm"
-                value={mKp}
-                onChange={(e) => setMKp(e.target.value)}
-                placeholder="如：进位加"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-slate-600" htmlFor={inBook}>
-              册别标签
+      <div className="space-y-4 p-4 sm:space-y-5 sm:p-5">
+        <details className="group rounded-xl border border-slate-200/60 bg-slate-50/50">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm text-slate-600 marker:hidden [&::-webkit-details-marker]:hidden">
+            <span>
+              {hasEnvKey ? (
+                <>
+                  <span className="text-emerald-600">已检测到</span> 环境里的
+                  API 配置
+                </>
+              ) : (
+                <>需联网识图：展开填写 API 密钥</>
+              )}
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-slate-100/90 px-3 pb-3 pt-2 text-xs text-slate-500">
+            <p className="mb-2 leading-relaxed">
+              有 <code className="rounded bg-white px-0.5">VITE_OPENAI_API_KEY</code>{" "}
+              时无需再填。否则在此临时填写，不会写进公开代码库。
+            </p>
+            <label className="sr-only" htmlFor={keyFieldId}>
+              临时代用 API 密钥
             </label>
             <input
-              id={inBook}
-              className="mt-0.5 w-full rounded-lg border p-1.5 text-sm"
-              value={mBook}
-              onChange={(e) => setMBook(e.target.value)}
+              id={keyFieldId}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              type="password"
+              autoComplete="off"
+              placeholder="sk-…"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
             />
           </div>
-          <button
-            type="button"
-            onClick={runManual}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-2xl bg-macaron-mint/80 py-2 text-sm font-medium text-slate-900"
-          >
-            <Plus className="h-4 w-4" />
-            手录进错题本
-          </button>
-        </div>
-      </div>
+        </details>
 
-      <p className="flex items-center gap-1 text-xs text-slate-400">
-        <ImagePlus className="h-3.5 w-3.5" />
-        多拍连录：分多次点「单拍识题」或手录。自动去手写、裁黑边在后续可接图像管线。
-      </p>
+        <div>
+          <input
+            id={fileId}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onPick}
+            className="sr-only"
+          />
+          <label
+            htmlFor={fileId}
+            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-violet-200/90 bg-violet-50/30 px-4 py-8 text-center transition hover:border-violet-300/90 hover:bg-violet-50/50"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100/90 text-violet-700">
+              <ImagePlus className="h-6 w-6" strokeWidth={1.5} />
+            </div>
+            <div>
+              <span className="text-sm font-medium text-slate-800">点选或拍摄卷面</span>
+              <p className="mt-0.5 text-xs text-slate-500">支持一图多题，尽量平铺、清晰、光线足</p>
+            </div>
+            {file && (
+              <span className="max-w-full truncate text-xs text-violet-700" title={file.name}>
+                已选：{file.name}
+              </span>
+            )}
+          </label>
+        </div>
+
+        {preview && (
+          <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-slate-900/5 p-1">
+            <img
+              src={preview}
+              alt="卷面预览"
+              className="max-h-52 w-full rounded-lg object-contain sm:max-h-64"
+            />
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={loading || !file}
+          onClick={runAi}
+          className="inline-flex w-full min-h-[2.75rem] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-violet-600 py-2.5 text-sm font-medium text-white shadow-sm transition enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {loading ? (
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+          ) : (
+            <Sparkles className="h-5 w-5 shrink-0" />
+          )}
+          {loading ? "识图中…" : "AI 抽取错题"}
+        </button>
+
+        {err && (
+          <p className="rounded-lg border border-red-200/80 bg-red-50/80 px-3 py-2 text-sm text-red-800" role="alert">
+            {err}
+          </p>
+        )}
+        {ok && (
+          <p
+            className="rounded-lg border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 text-sm text-emerald-800"
+            role="status"
+          >
+            {ok}
+          </p>
+        )}
+
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-slate-400">
+          <ImagePlus className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>可分多次拍录；复杂卷面可裁成单题、清晰后再传。</span>
+        </p>
+      </div>
     </section>
   );
 }

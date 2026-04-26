@@ -26,13 +26,13 @@ export default function KnowledgeGraph({ subject }) {
   return (
     <section className="space-y-3" aria-label={`${subject}知识点`}>
       <h3 className="text-base font-bold text-slate-800">
-        三、{subject} · 知识点与归档
+        二、{subject} · 知识点与归档
       </h3>
       <p className="text-sm text-slate-600">
         本栏仅含「{subject}」试卷/作业类错题。气泡大小表示该科各知识点题量。
       </p>
       {kpBubbles.length === 0 && (
-        <p className="text-sm text-slate-500">该学科下暂无拍卷/手录记录。</p>
+        <p className="text-sm text-slate-500">该学科下暂无拍卷记录。</p>
       )}
       <ul className="flex flex-wrap gap-2" aria-label="知识点">
         {kpBubbles.map(([k, n]) => (
