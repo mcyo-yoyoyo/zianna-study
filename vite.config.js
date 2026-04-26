@@ -2,7 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
-export default defineConfig({
+/** GitHub Pages: https://<user>.github.io/<repo>/ */
+const GH_PAGES_BASE = "/zianna-study/";
+
+export default defineConfig(({ command }) => ({
+  // 仅正式构建时挂到子路径，本地 `npm run dev` 仍用根路径
+  base: command === "build" ? GH_PAGES_BASE : "/",
   plugins: [react()],
   resolve: {
     alias: {
@@ -15,4 +20,4 @@ export default defineConfig({
     host: true,
     strictPort: false,
   },
-});
+}));
