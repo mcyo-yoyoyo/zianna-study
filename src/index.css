@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply min-h-screen font-display text-slate-800 antialiased;
+    @apply bg-gradient-to-b from-macaron-cream to-macaron-mint/30;
+  }
+  #root {
+    @apply min-h-screen;
+  }
+  /* 第四步：家长机（窄屏）更紧凑；孩子端（Pad/宽屏）略加大字号与可点区域 */
+  html[data-mode="parent"] {
+    font-size: 16px;
+  }
+  html[data-mode="child"] {
+    font-size: 17px;
+  }
+  @media (min-width: 768px) {
+    html[data-mode="child"] {
+      font-size: 18px;
+    }
+  }
+  html[data-mode="child"] .touch-manipulation {
+    touch-action: manipulation;
+  }
+}
